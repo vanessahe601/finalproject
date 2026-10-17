@@ -1,0 +1,290 @@
+---
+title: "final project(capstone)"
+format: html
+editor: visual
+---
+
+{r}
+library(tidyverse)
+
+# Read the dataset
+p1 <- read_csv("md.csv")
+
+# View the dataset
+View(p1)
+
+# Keep college graduates with valid wages and majors
+jobs1 <- p1 |>
+  filter(
+    !is.na(WAGP),
+    !is.na(FOD1P),
+    !is.na(SCHL),
+    !is.na(SEX),
+    SCHL == 21,
+    WAGP > 0)
+
+# Calculate median wage for each major
+major_wage <- jobs1 |>
+  group_by(FOD1P) |>
+  summarise(
+    median_wage = median(WAGP),# Calculate median wage
+    sample_size = n()) |>  # Count people in each major
+     
+  filter(sample_size >= 10) |> # Remove very small groups
+  arrange(desc(median_wage))  # Rank wages from high to low
+
+
+# View the result
+View(major_wage)
+
+#2408 electrical engineering ,2417 naval architecture and marine engineering,
+#3702 statistics and decision science, 2401 aerospace engineering ,
+#2102 computer science ,2407 computer engineering,6204 operations logistics and E-commerce
+#6212 management information systems and statistics
+
+
+
+top_major_wage <- major_wage |>
+  head(8) |>
+  mutate(Major = case_when(
+    FOD1P == 2408 ~ "Electrical Engineering",
+    FOD1P == 2417 ~ "Naval Architecture and Marine Engineering",
+    FOD1P == 3702 ~ "Statistics and Decision Science",
+    FOD1P == 2401 ~ "Aerospace Engineering",
+    FOD1P == 2102 ~ "Computer Science",
+    FOD1P == 2407 ~ "Computer Engineering",
+    FOD1P == 6204 ~ "Operations, Logistics and E-Commerce",
+    FOD1P == 6212 ~ "Management Information Systems and Statistics"
+  ))
+
+# Set the same major order for both charts
+major_order <- c(
+  "Computer Engineering",
+  "Operations, Logistics and E-Commerce",
+  "Computer Science",
+  "Aerospace Engineering",
+  "Management Information Systems and Statistics",
+  "Statistics and Decision Science",
+  "Electrical Engineering",
+  "Naval Architecture and Marine Engineering"
+)
+
+View(top_major_wage)
+
+
+  #show majors with top salary
+  #count(WAGP,sort=TRUE)
+  
+  #show the top majors with most people
+  # count(FOD1P,sort=TRUE)
+#2102 computer science,5200 phychology,5301 criminal justice and fire protection
+#5506 political science and government,6107 nursing,6201accounting,6200 general business
+#6203 business management and administartion
+
+
+
+
+##visualization 1
+
+{r}
+# Create the bar chart
+ggplot(top_major_wage,
+       aes(x = reorder(Major, median_wage),
+           y = median_wage,
+           fill = Major)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "College Majors with the Highest Median Wages",
+    x = "College Major",
+    y = "Median Annual Wage ($)",
+    fill = "College Major",
+    caption = "Source: 2024 ACS PUMS"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+{r}
+# Create the bar chart
+ggplot(top_major_wage,
+       aes(x = reorder(Major, median_wage),
+           y = median_wage,
+           fill = Major)) +
+  geom_col() +
+  coord_flip() +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "College Majors with the Highest Median Wages",
+    x = "College Major",
+    y = "Median Annual Wage ($)",
+    caption = "Source: 2024 ACS PUMS"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5))
+
+{r}
+# Create a dot plot
+ggplot(
+  top_major_wage,
+  aes(
+    x = reorder(Major, median_wage),
+    y = median_wage,
+    color = Major
+  )
+) +
+  geom_point(size = 5) +
+  coord_flip(ylim = c(100000, 140000)) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(
+    title = "College Majors with the Highest Median Wages",
+    x = "College Major",
+    y = "Median Annual Wage ($)",
+    caption = "Source: 2024 ACS PUMS"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+{r}
+# Calculate median wage by major and sex
+major_sex_wage <- jobs1 |>
+  
+  # Keep the top 8 majors
+  filter(FOD1P %in% top_major_wage$FOD1P) |>
+  
+  # Convert codes into names
+  mutate(
+    Major = case_when(
+      FOD1P == 2408 ~ "Electrical Engineering",
+      FOD1P == 2417 ~ "Naval Architecture and Marine Engineering",
+      FOD1P == 3702 ~ "Statistics and Decision Science",
+      FOD1P == 2401 ~ "Aerospace Engineering",
+      FOD1P == 2102 ~ "Computer Science",
+      FOD1P == 2407 ~ "Computer Engineering",
+      FOD1P == 6204 ~ "Operations, Logistics and E-Commerce",
+      FOD1P == 6212 ~ "Management Information Systems and Statistics"
+    ),
+    
+    # Convert sex codes into names
+    Sex = case_when(
+      SEX == 1 ~ "Male",
+      SEX == 2 ~ "Female"
+    )
+  ) |>
+  
+  # Group the data
+  group_by(Major, Sex) |>
+  
+  # Calculate median wage
+  summarise(
+    median_wage = median(WAGP))
+
+{r}
+
+
+# Create the grouped bar chart
+ggplot(
+  major_sex_wage,
+  aes(
+    x = factor(Major, levels = major_order),
+    y = median_wage,
+    fill = Sex
+  )
+) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  scale_y_continuous(labels = scales::dollar) +
+  scale_fill_manual(
+    values = c(
+      "Male" = "lightblue",
+      "Female" = "pink"
+    )
+  ) +
+  labs(
+    title = "Median Wages by College Major and Sex",
+    x = "College Major",
+    y = "Median Annual Wage ($)",
+    fill = "Sex",
+    caption = "Source: 2024 ACS PUMS"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+
+{r}
+#visualization 3 
+#How does median wage vary across age groups for male and female college graduates in Maryland?
+
+# Calculate median wage by age group and sex
+age_sex_wage <- jobs1 |>
+  
+  # Keep people age 20 and older
+  filter(AGEP >= 20) |>
+  
+  # Create age groups and sex labels
+  mutate(
+    Age_Group = cut(
+      AGEP,
+      breaks = c(19, 29, 39, 49, 59, 69, Inf),
+      labels = c("20–29", "30–39", "40–49",
+                 "50–59", "60–69", "70+")
+    ),
+    Sex = case_when(
+      SEX == 1 ~ "Male",
+      SEX == 2 ~ "Female"
+    )
+  ) |>
+  
+  # Group by age and sex
+  group_by(Age_Group, Sex) |>
+  
+  # Calculate median wage
+  summarise(
+    median_wage = median(WAGP),
+    .groups = "drop"
+  )
+
+
+{r}
+# Create the line chart
+ggplot(
+  age_sex_wage,
+  aes(
+    x = Age_Group,
+    y = median_wage,
+    color = Sex,
+    group = Sex
+  )
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  scale_y_continuous(labels = scales::dollar) +
+  scale_color_manual(
+    values = c(
+      "Male" = "lightblue",
+      "Female" = "pink"
+    )
+  ) +
+  labs(
+    title = "Median Wage by Age Group and Sex",
+    x = "Age Group",
+    y = "Median Annual Wage ($)",
+    color = "Sex",
+    caption = "Source: 2024 ACS PUMS"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+
